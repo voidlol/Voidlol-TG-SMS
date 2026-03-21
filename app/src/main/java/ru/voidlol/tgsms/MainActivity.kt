@@ -73,6 +73,7 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
@@ -212,7 +213,7 @@ private fun TelegramForwarderScreen(
                     value = botToken,
                     onValueChange = { botToken = it },
                     modifier = Modifier.fillMaxWidth(),
-                    label = { Text(text = context.getString(R.string.bot_token_label)) },
+                    label = { Text(text = stringResource(R.string.bot_token_label)) },
                     leadingIcon = {
                         Icon(
                             imageVector = Icons.Outlined.Key,
@@ -235,7 +236,7 @@ private fun TelegramForwarderScreen(
                     value = chatId,
                     onValueChange = { chatId = it },
                     modifier = Modifier.fillMaxWidth(),
-                    label = { Text(text = context.getString(R.string.chat_id_label)) },
+                    label = { Text(text = stringResource(R.string.chat_id_label)) },
                     leadingIcon = {
                         Icon(
                             imageVector = Icons.Outlined.Tag,
@@ -263,7 +264,7 @@ private fun TelegramForwarderScreen(
                     )
                 ) {
                     Text(
-                        text = context.getString(R.string.save_settings),
+                        text = stringResource(R.string.save_settings),
                         modifier = Modifier.padding(vertical = 4.dp)
                     )
                 }
@@ -281,7 +282,7 @@ private fun TelegramForwarderScreen(
                         isSending = true
                         onSendTest(currentSettings) { result ->
                             isSending = false
-                            val message = if (result.isSuccess) {
+                            val toastMessage = if (result.isSuccess) {
                                 context.getString(R.string.test_sent)
                             } else {
                                 context.getString(
@@ -289,7 +290,7 @@ private fun TelegramForwarderScreen(
                                     result.exceptionOrNull()?.message.orEmpty()
                                 )
                             }
-                            Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+                            Toast.makeText(context, toastMessage, Toast.LENGTH_LONG).show()
                         }
                     },
                     modifier = Modifier.fillMaxWidth(),
@@ -303,7 +304,7 @@ private fun TelegramForwarderScreen(
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = if (isSending) "Sending..." else context.getString(R.string.send_test),
+                        text = if (isSending) "Sending..." else stringResource(R.string.send_test),
                         modifier = Modifier.padding(vertical = 4.dp)
                     )
                 }
@@ -338,7 +339,7 @@ private fun TelegramForwarderScreen(
                 if (!allGranted) {
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = context.getString(R.string.permissions_hint),
+                        text = stringResource(R.string.permissions_hint),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -349,7 +350,7 @@ private fun TelegramForwarderScreen(
                         shape = RoundedCornerShape(14.dp)
                     ) {
                         Text(
-                            text = context.getString(R.string.grant_permissions),
+                            text = stringResource(R.string.grant_permissions),
                             modifier = Modifier.padding(vertical = 4.dp)
                         )
                     }
@@ -358,7 +359,7 @@ private fun TelegramForwarderScreen(
 
             // ── Relay service card ────────────────────
             SectionCard(
-                title = context.getString(R.string.relay_service_title),
+                title = stringResource(R.string.relay_service_title),
                 icon = Icons.Outlined.Sync
             ) {
                 Row(
@@ -376,9 +377,9 @@ private fun TelegramForwarderScreen(
                     Spacer(modifier = Modifier.width(12.dp))
                     Text(
                         text = if (serviceRunning) {
-                            context.getString(R.string.relay_running)
+                            stringResource(R.string.relay_running)
                         } else {
-                            context.getString(R.string.relay_stopped)
+                            stringResource(R.string.relay_stopped)
                         },
                         style = MaterialTheme.typography.bodyMedium,
                         modifier = Modifier.weight(1f)
@@ -403,7 +404,7 @@ private fun TelegramForwarderScreen(
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = context.getString(R.string.relay_stop),
+                            text = stringResource(R.string.relay_stop),
                             modifier = Modifier.padding(vertical = 4.dp)
                         )
                     }
@@ -414,7 +415,7 @@ private fun TelegramForwarderScreen(
                                 Toast.makeText(
                                     context,
                                     context.getString(R.string.relay_needs_setup),
-                                    Toast.LENGTH_SHORT
+                                    Toast.LENGTH_SHORT,
                                 ).show()
                                 return@Button
                             }
@@ -434,7 +435,7 @@ private fun TelegramForwarderScreen(
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = context.getString(R.string.relay_start),
+                            text = stringResource(R.string.relay_start),
                             modifier = Modifier.padding(vertical = 4.dp)
                         )
                     }

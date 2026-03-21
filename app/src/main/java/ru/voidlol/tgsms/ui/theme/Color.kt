@@ -57,4 +57,3 @@ val DarkOnError = Color(0xFF601410)
 // ── Semantic extras (used directly in composables) ─────────
 val StatusGreen = Color(0xFF34A853)
 val StatusAmber = Color(0xFFFBBC04)
-val StatusRed = Color(0xFFEA4335)

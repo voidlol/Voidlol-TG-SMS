@@ -117,7 +117,7 @@ class TelegramSenderTest {
         )
 
         assertTrue(capturedBody!!.contains("chat_id=123"))
-        assertTrue(capturedBody!!.contains("text=hello"))
+        assertTrue(capturedBody.contains("text=hello"))
     }
 
     @Test
@@ -146,7 +146,7 @@ class TelegramSenderTest {
         )
 
         assertFalse("Body should URL-encode &", capturedBody!!.contains("&goodbye"))
-        assertTrue(capturedBody!!.contains("text=hello"))
+        assertTrue(capturedBody.contains("text=hello"))
     }
 
     @Test

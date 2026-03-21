@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.SharedPreferences
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKeys
+import androidx.core.content.edit
 
 class AppSettingsStore(context: Context) {
 
@@ -26,10 +27,10 @@ class AppSettingsStore(context: Context) {
     )
 
     fun save(settings: AppSettings) {
-        prefs.edit()
-            .putString(KEY_BOT_TOKEN, settings.botToken.trim())
-            .putString(KEY_CHAT_ID, settings.chatId.trim())
-            .apply()
+        prefs.edit {
+            putString(KEY_BOT_TOKEN, settings.botToken.trim())
+                .putString(KEY_CHAT_ID, settings.chatId.trim())
+        }
     }
 
     companion object {

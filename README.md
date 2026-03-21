@@ -128,48 +128,40 @@ keytool -genkey -v -keystore release.keystore -alias my-key -keyalg RSA -keysize
 KEYSTORE_PASSWORD=your_password KEY_ALIAS=my-key KEY_PASSWORD=your_password ./gradlew assembleRelease
 ```
 
-## CI/CD
-
-The project includes a GitHub Actions workflow (`.github/workflows/release.yml`) that automatically builds and publishes a signed release APK on every push to master.
-
-### Required GitHub Secrets
-
-| Secret             | Description                                        |
-|--------------------|----------------------------------------------------|
-| `KEYSTORE_BASE64`  | Base64-encoded keystore (`base64 -i release.keystore`) |
-| `KEYSTORE_PASSWORD`| Keystore password                                  |
-| `KEY_ALIAS`        | Key alias                                          |
-| `KEY_PASSWORD`     | Key password                                       |
-
 ## Project Structure
 
 ```
 app/src/main/java/ru/voidlol/tgsms/
-├── MainActivity.kt            # Compose UI — settings, permissions, relay toggle
-├── RelayService.kt            # Foreground service — keeps app alive, hosts bot poller
-├── BootReceiver.kt            # BOOT_COMPLETED + MY_PACKAGE_REPLACED auto-start
-├── SmsReceiver.kt             # BroadcastReceiver for incoming SMS
-├── BatteryAlertReceiver.kt    # BroadcastReceiver for low battery
-├── TelegramBotPoller.kt       # Long-polling loop for Telegram bot commands
-├── BotCommandHandler.kt       # /ping, /status, /log, /help command handlers
-├── TelegramSender.kt          # OkHttp client for Telegram Bot API
-├── TelegramWorker.kt          # WorkManager worker — drains message queue
-├── MessageQueue.kt            # Facade — enqueue message + schedule worker
-├── MessageQueueStore.kt       # Persistent JSON file queue (crash-safe)
-├── ForwardedMessageLog.kt     # Log of last 30 sent messages (for /log command)
-├── PendingMessage.kt          # Data class for queued messages
-├── AppSettings.kt             # Data class for bot token & chat ID
-├── AppSettingsStore.kt        # EncryptedSharedPreferences persistence
-├── MessageFormatter.kt        # SMS message formatting
-├── BatteryAlertFormatter.kt   # Battery alert formatting
-├── BatteryStatusReader.kt     # Battery percentage extraction
-├── DeviceInfoFormatter.kt     # Device manufacturer/model
-├── PhoneMetadataResolver.kt   # SIM number & contact name lookup
-├── TestMessageFormatter.kt    # Test message formatting
-└── ui/theme/
-    ├── Color.kt               # Color palette (light & dark)
-    ├── Theme.kt               # Material 3 theme configuration
-    └── Type.kt                # Typography definitions
+├── MainActivity.kt                # Compose UI — settings, permissions, relay toggle
+├── data/
+│   ├── AppSettings.kt             # Data class for bot token & chat ID
+│   ├── AppSettingsStore.kt        # EncryptedSharedPreferences persistence
+│   ├── ForwardedMessageLog.kt     # Log of last 30 sent messages (for /log command)
+│   ├── MessageQueue.kt            # Facade — enqueue message + schedule worker
+│   ├── MessageQueueStore.kt       # Persistent JSON file queue (crash-safe)
+│   └── PendingMessage.kt          # Data class for queued messages
+├── receiver/
+│   ├── BatteryAlertReceiver.kt    # BroadcastReceiver for low battery
+│   ├── BootReceiver.kt            # BOOT_COMPLETED + MY_PACKAGE_REPLACED auto-start
+│   └── SmsReceiver.kt             # BroadcastReceiver for incoming SMS
+├── service/
+│   ├── RelayService.kt            # Foreground service — keeps app alive, hosts bot poller
+│   └── TelegramWorker.kt          # WorkManager worker — drains message queue
+├── telegram/
+│   ├── BotCommandHandler.kt       # /ping, /status, /log, /help command handlers
+│   ├── TelegramBotPoller.kt       # Long-polling loop for Telegram bot commands
+│   └── TelegramSender.kt          # OkHttp client for Telegram Bot API
+├── ui/theme/
+│   ├── Color.kt                   # Color palette (light & dark)
+│   ├── Theme.kt                   # Material 3 theme configuration
+│   └── Type.kt                    # Typography definitions
+└── util/
+    ├── BatteryAlertFormatter.kt   # Battery alert formatting
+    ├── BatteryStatusReader.kt     # Battery percentage extraction
+    ├── DeviceInfoFormatter.kt     # Device manufacturer/model
+    ├── MessageFormatter.kt        # SMS message formatting
+    ├── PhoneMetadataResolver.kt   # SIM number & contact name lookup
+    └── TestMessageFormatter.kt    # Test message formatting
 ```
 
 ## Permissions

@@ -10,6 +10,7 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.json.JSONObject
 import java.util.concurrent.TimeUnit
+import androidx.core.content.edit
 
 object TelegramBotPoller {
 
@@ -42,7 +43,7 @@ object TelegramBotPoller {
 
                 if (offset == 0L) {
                     offset = skipOldUpdates(settings.botToken)
-                    prefs.edit().putLong(KEY_OFFSET, offset).apply()
+                    prefs.edit { putLong(KEY_OFFSET, offset) }
                 }
 
                 val updates = getUpdates(settings.botToken, offset, POLL_TIMEOUT)
@@ -54,7 +55,7 @@ object TelegramBotPoller {
                         }
                     }
                     offset = update.updateId + 1
-                    prefs.edit().putLong(KEY_OFFSET, offset).apply()
+                    prefs.edit { putLong(KEY_OFFSET, offset) }
                 }
             } catch (e: CancellationException) {
                 throw e

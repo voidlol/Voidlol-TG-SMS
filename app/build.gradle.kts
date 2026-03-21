@@ -1,3 +1,12 @@
+import java.util.Properties
+
+val versionProps = Properties().apply {
+    load(rootProject.file("version.properties").inputStream())
+}
+val vMajor = versionProps.getProperty("VERSION_MAJOR").toInt()
+val vMinor = versionProps.getProperty("VERSION_MINOR").toInt()
+val vPatch = versionProps.getProperty("VERSION_PATCH").toInt()
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
@@ -15,8 +24,8 @@ android {
         applicationId = "ru.voidlol.tgsms"
         minSdk = 24
         targetSdk = 36
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = vMajor * 10000 + vMinor * 100 + vPatch
+        versionName = "$vMajor.$vMinor.$vPatch"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -70,7 +79,7 @@ dependencies {
     implementation(libs.androidx.work.runtime.ktx)
     implementation(libs.androidx.security.crypto)
     testImplementation(libs.junit)
-    testImplementation("org.json:json:20231013")
+    testImplementation("org.json:json:20251224")
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(platform(libs.androidx.compose.bom))
