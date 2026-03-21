@@ -1,0 +1,20 @@
+<resources>
+    <string name="app_name">Voidlol TG-SMS</string>
+    <string name="bot_token_label">Bot token</string>
+    <string name="chat_id_label">Chat ID</string>
+    <string name="save_settings">Save settings</string>
+    <string name="send_test">Send test</string>
+    <string name="permissions_status_granted">Permissions granted</string>
+    <string name="permissions_status_missing">Missing permissions: %1$s</string>
+    <string name="grant_permissions">Grant permissions</string>
+    <string name="settings_saved">Settings saved</string>
+    <string name="settings_missing">Enter bot token and chat ID first</string>
+    <string name="test_sent">Test message sent</string>
+    <string name="test_failed">Failed to send test: %1$s</string>
+    <string name="sim_unknown">sim-unknown</string>
+    <string name="sender_unknown">sender-unknown</string>
+    <string name="test_message">[%1$s][test] Telegram delivery is working</string>
+    <string name="battery_low_message">[%1$s][battery] Low battery alert: %2$d%%</string>
+    <string name="battery_low_message_unknown">[%1$s][battery] Low battery alert</string>
+    <string name="permissions_hint">The app needs SMS access to receive messages, phone permissions for SIM number lookup, and contacts for sender names.</string>
+</resources>
