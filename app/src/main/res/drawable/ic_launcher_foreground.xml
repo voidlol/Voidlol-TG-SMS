@@ -3,25 +3,24 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
+
+    <!-- SMS chat bubble -->
     <path
-        android:fillColor="#F7F4EE"
-        android:pathData="M18,26c0,-6.63 5.37,-12 12,-12h48c6.63,0 12,5.37 12,12v28c0,6.63 -5.37,12 -12,12H44L26,80V66h-8c-6.63,0 -12,-5.37 -12,-12z" />
+        android:fillColor="#FFFFFF"
+        android:pathData="M38,20 L72,20 C79.7,20 86,26.3 86,34 L86,54 C86,61.7 79.7,68 72,68 L48,68 L30,84 L36,68 L38,68 C30.3,68 24,61.7 24,54 L24,34 C24,26.3 30.3,20 38,20 Z" />
+
+    <!-- Paper plane - main body (lighter blue) -->
     <path
-        android:fillColor="#0F3D56"
-        android:pathData="M31,31h33a3.5,3.5 0 1,1 0,7H31a3.5,3.5 0 1,1 0,-7z" />
+        android:fillColor="#2AABEE"
+        android:pathData="M38,34 L72,44 L54,56 L46,44 Z" />
+
+    <!-- Paper plane - fold (darker blue for depth) -->
     <path
-        android:fillColor="#0F3D56"
-        android:pathData="M31,44h23a3.5,3.5 0 1,1 0,7H31a3.5,3.5 0 1,1 0,-7z" />
+        android:fillColor="#1A8CD8"
+        android:pathData="M46,44 L72,44 L54,56 Z" />
+
+    <!-- Paper plane - trail accent -->
     <path
-        android:fillColor="#E66A4E"
-        android:pathData="M77,54m-18,0a18,18 0 1,1 36,0a18,18 0 1,1 -36,0" />
-    <path
-        android:fillColor="#FFF7F0"
-        android:pathData="M69,54.5l15.6,-6.6c1.2,-0.51 2.38,0.67 1.87,1.87l-6.6,15.6c-0.45,1.06 -1.93,1.12 -2.46,0.1l-2.14,-4.11l-4.11,-2.14c-1.02,-0.53 -0.96,-2.01 0.1,-2.46z" />
-    <path
-        android:fillColor="#FFF7F0"
-        android:pathData="M75.1,60.3l8.1,-8.1"
-        android:strokeWidth="2.2"
-        android:strokeLineCap="round"
-        android:strokeColor="#FFF7F0" />
+        android:fillColor="#2AABEE"
+        android:pathData="M54,56 L46,44 L48,52 Z" />
 </vector>

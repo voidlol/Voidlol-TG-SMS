@@ -17,4 +17,14 @@
     <string name="battery_low_message">[%1$s][battery] Low battery alert: %2$d%%</string>
     <string name="battery_low_message_unknown">[%1$s][battery] Low battery alert</string>
     <string name="permissions_hint">The app needs SMS access to receive messages, phone permissions for SIM number lookup, and contacts for sender names.</string>
+    <string name="notification_channel_name">Relay Service</string>
+    <string name="notification_channel_description">Keeps the SMS relay running in the background</string>
+    <string name="notification_title">TG-SMS Relay</string>
+    <string name="notification_text">Active</string>
+    <string name="relay_service_title">Relay service</string>
+    <string name="relay_start">Start relay</string>
+    <string name="relay_stop">Stop relay</string>
+    <string name="relay_running">Service is active — bot commands enabled</string>
+    <string name="relay_stopped">Service is stopped</string>
+    <string name="relay_needs_setup">Complete setup first</string>
 </resources>
