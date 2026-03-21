@@ -22,9 +22,9 @@ android {
     }
 
     signingConfigs {
-        create("release") {
-            val ksFile = rootProject.file("release.keystore")
-            if (ksFile.exists()) {
+        val ksFile = rootProject.file("release.keystore")
+        if (ksFile.exists()) {
+            create("release") {
                 storeFile = ksFile
                 storePassword = System.getenv("KEYSTORE_PASSWORD")
                 keyAlias = System.getenv("KEY_ALIAS")
@@ -40,7 +40,10 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            signingConfig = signingConfigs.getByName("release")
+            val ksFile = rootProject.file("release.keystore")
+            if (ksFile.exists()) {
+                signingConfig = signingConfigs.getByName("release")
+            }
         }
     }
     compileOptions {
