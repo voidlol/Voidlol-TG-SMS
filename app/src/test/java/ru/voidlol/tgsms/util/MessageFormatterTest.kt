@@ -12,7 +12,7 @@ class MessageFormatterTest {
             text = "Code: 1234"
         )
 
-        assertEquals("[+15550001][+1999000\\Bank]\n\nCode: 1234", message)
+        assertEquals("[SIM: +15550001]\n[FROM: +1999000\\Bank]\n\nCode: 1234", message)
     }
 
     @Test
@@ -23,7 +23,7 @@ class MessageFormatterTest {
             text = "  Hello world  "
         )
 
-        assertEquals("[unknown][unknown]\n\nHello world", message)
+        assertEquals("[SIM: unknown]\n[FROM: unknown]\n\nHello world", message)
     }
 
     @Test
@@ -41,7 +41,7 @@ class MessageFormatterTest {
             senderLabel = "+5678",
             text = "Your code: 1234 & pin: 5678 <html>"
         )
-        assertEquals("[+1234][+5678]\n\nYour code: 1234 & pin: 5678 <html>", message)
+        assertEquals("[SIM: +1234]\n[FROM: +5678]\n\nYour code: 1234 & pin: 5678 <html>", message)
     }
 
     @Test
@@ -51,7 +51,7 @@ class MessageFormatterTest {
             senderLabel = "+5678",
             text = ""
         )
-        assertEquals("[+1234][+5678]\n\n", message)
+        assertEquals("[SIM: +1234]\n[FROM: +5678]\n\n", message)
     }
 
     @Test
@@ -61,6 +61,6 @@ class MessageFormatterTest {
             senderLabel = "name\nwrap",
             text = "hi"
         )
-        assertEquals("[line1 line2][name wrap]\n\nhi", message)
+        assertEquals("[SIM: line1 line2]\n[FROM: name wrap]\n\nhi", message)
     }
 }

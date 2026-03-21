@@ -2,7 +2,7 @@ package ru.voidlol.tgsms.util
 
 object MessageFormatter {
     fun smsMessage(simPhoneNumber: String, senderLabel: String, text: String): String {
-        return "[${sanitize(simPhoneNumber)}][${sanitize(senderLabel)}]\n\n${text.trim()}"
+        return "[SIM: ${sanitize(simPhoneNumber)}]\n[FROM: ${sanitize(senderLabel)}]\n\n${text.trim()}"
     }
 
     private fun sanitize(value: String): String {
