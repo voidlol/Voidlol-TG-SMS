@@ -25,3 +25,7 @@
 -dontwarn org.conscrypt.**
 -dontwarn org.bouncycastle.**
 -dontwarn org.openjsse.**
+
+# Google Tink (pulled in by androidx.security:security-crypto)
+-dontwarn com.google.errorprone.annotations.**
+-dontwarn javax.annotation.**
