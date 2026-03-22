@@ -169,10 +169,32 @@ class MainActivity : ComponentActivity() {
                 )
             }
         }
+
+        refreshAvailableUpdate()
     }
 
     private fun toast(message: String) {
         Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
+    }
+
+    private fun refreshAvailableUpdate() {
+        lifecycleScope.launch {
+            val result = withContext(Dispatchers.IO) {
+                runCatching { appUpdater.checkForUpdate() }
+            }
+            val updateInfo = result.getOrElse { return@launch }
+
+            appUpdateStateStore.saveAvailableUpdate(updateInfo)
+            updateUiState = updateUiState.copy(
+                availableUpdate = updateInfo,
+                statusMessage = if (updateInfo != null) {
+                    getString(R.string.update_available_message, updateInfo.versionName)
+                } else {
+                    getString(R.string.update_idle_message)
+                },
+                errorMessage = null
+            )
+        }
     }
 
     private fun downloadAndInstallUpdate(updateInfo: AppUpdateInfo) {

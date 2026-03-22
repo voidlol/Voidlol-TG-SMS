@@ -12,7 +12,11 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import androidx.work.CoroutineWorker
+import androidx.work.Constraints
 import androidx.work.ExistingPeriodicWorkPolicy
+import androidx.work.ExistingWorkPolicy
+import androidx.work.NetworkType
+import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
@@ -28,7 +32,9 @@ class AppUpdateWorker(
     private val stateStore = AppUpdateStateStore(appContext)
 
     override suspend fun doWork(): Result {
-        val updateInfo = runCatching { updater.checkForUpdate() }.getOrNull()
+        val updateInfo = runCatching { updater.checkForUpdate() }
+            .getOrElse { return Result.retry() }
+
         stateStore.saveAvailableUpdate(updateInfo)
 
         if (updateInfo != null && stateStore.lastNotifiedVersionCode() < updateInfo.versionCode) {
@@ -101,19 +107,34 @@ class AppUpdateWorker(
     }
 
     companion object {
-        private const val WORK_NAME = "app_update_check"
+        private const val PERIODIC_WORK_NAME = "app_update_check_periodic"
+        private const val IMMEDIATE_WORK_NAME = "app_update_check_immediate"
         private const val CHANNEL_ID = "app_updates"
         private const val NOTIFICATION_ID = 2001
 
         fun schedule(context: Context) {
-            val request = PeriodicWorkRequestBuilder<AppUpdateWorker>(1, TimeUnit.DAYS)
-                .setInitialDelay(1, TimeUnit.DAYS)
+            val constraints = Constraints.Builder()
+                .setRequiredNetworkType(NetworkType.CONNECTED)
+                .build()
+
+            val periodicRequest = PeriodicWorkRequestBuilder<AppUpdateWorker>(1, TimeUnit.DAYS)
+                .setConstraints(constraints)
                 .build()
 
             WorkManager.getInstance(context).enqueueUniquePeriodicWork(
-                WORK_NAME,
+                PERIODIC_WORK_NAME,
                 ExistingPeriodicWorkPolicy.UPDATE,
-                request
+                periodicRequest
+            )
+
+            val immediateRequest = OneTimeWorkRequestBuilder<AppUpdateWorker>()
+                .setConstraints(constraints)
+                .build()
+
+            WorkManager.getInstance(context).enqueueUniqueWork(
+                IMMEDIATE_WORK_NAME,
+                ExistingWorkPolicy.KEEP,
+                immediateRequest
             )
         }
     }
