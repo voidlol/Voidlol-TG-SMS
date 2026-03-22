@@ -1,4 +1,4 @@
-name: Build & Release APK
+name: Build Release APK + Publish Update Metadata
 
 on:
   push:
@@ -8,10 +8,21 @@ on:
 
 permissions:
   contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    outputs:
+      version_name: ${{ steps.bump_version.outputs.version_name }}
+      version_code: ${{ steps.bump_version.outputs.version_code }}
+      tag: ${{ steps.version.outputs.tag }}
+      apk_name: ${{ steps.apk.outputs.apk_name }}
 
     steps:
       - uses: actions/checkout@v4
@@ -67,9 +78,12 @@ jobs:
           echo "version_name=$VERSION_NAME" >> "$GITHUB_OUTPUT"
 
       - name: Rename APK
+        id: apk
         run: |
           APK=$(find app/build/outputs/apk/release -name '*.apk' | head -1)
-          mv "$APK" app/build/outputs/apk/release/VoidlolTGSMS-${{ steps.version.outputs.version_name }}.apk
+          APK_NAME="VoidlolTGSMS-${{ steps.version.outputs.version_name }}.apk"
+          mv "$APK" "app/build/outputs/apk/release/$APK_NAME"
+          echo "apk_name=$APK_NAME" >> "$GITHUB_OUTPUT"
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
@@ -88,5 +102,48 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add version.properties
-          git commit -m "ci: bump version to ${{ steps.bump_version.outputs.version_name }} [skip ci]"
+          git commit -m "ci: bump version to ${{ steps.bump_version.outputs.version_name }} [skip ci]" || exit 0
           git push
+
+  publish-update-json:
+    runs-on: ubuntu-latest
+    needs: build
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Generate update.json
+        env:
+          VERSION_NAME: ${{ needs.build.outputs.version_name }}
+          VERSION_CODE: ${{ needs.build.outputs.version_code }}
+          TAG: ${{ needs.build.outputs.tag }}
+          APK_NAME: ${{ needs.build.outputs.apk_name }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          mkdir -p site
+
+          APK_URL="https://github.com/${REPOSITORY}/releases/download/${TAG}/${APK_NAME}"
+          PUBLISHED_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+
+          cat > site/update.json <<EOF
+          {
+            "versionCode": ${VERSION_CODE},
+            "versionName": "${VERSION_NAME}",
+            "apkUrl": "${APK_URL}",
+            "changelog": "See GitHub release notes",
+            "publishedAt": "${PUBLISHED_AT}"
+          }
+          EOF
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
