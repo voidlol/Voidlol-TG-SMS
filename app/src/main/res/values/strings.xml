@@ -4,6 +4,11 @@
     <string name="chat_id_label">Chat ID</string>
     <string name="save_settings">Save settings</string>
     <string name="send_test">Send test</string>
+    <string name="battery_alert_threshold_label">Battery alert threshold: %1$d%%</string>
+    <string name="battery_alert_threshold_hint">The first alert fires at this percent, then again every 2%% lower while the battery is still discharging.</string>
+    <string name="battery_alert_preview_title">Alert cadence preview</string>
+    <string name="battery_alert_threshold_value">%1$d%% start</string>
+    <string name="battery_alert_preview_hint">Alerts will fire at %1$d%%, then %2$d%%, then %3$d%% while the device is not charging.</string>
     <string name="permissions_status_granted">Permissions granted</string>
     <string name="permissions_status_missing">Missing permissions: %1$s</string>
     <string name="grant_permissions">Grant permissions</string>

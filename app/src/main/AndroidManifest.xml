@@ -52,15 +52,6 @@
         </receiver>
 
         <receiver
-            android:name=".receiver.BatteryAlertReceiver"
-            android:enabled="true"
-            android:exported="false">
-            <intent-filter>
-                <action android:name="android.intent.action.BATTERY_LOW" />
-            </intent-filter>
-        </receiver>
-
-        <receiver
             android:name=".receiver.BootReceiver"
             android:enabled="true"
             android:exported="false">

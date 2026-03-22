@@ -10,8 +10,10 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.IBinder
@@ -23,10 +25,12 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
+import ru.voidlol.tgsms.receiver.BatteryAlertReceiver
 
 class RelayService : Service() {
 
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+    private val batteryAlertReceiver: BroadcastReceiver = BatteryAlertReceiver()
 
     override fun onCreate() {
         super.onCreate()
@@ -42,6 +46,7 @@ class RelayService : Service() {
         } else {
             startForeground(NOTIFICATION_ID, notification)
         }
+        registerReceiver(batteryAlertReceiver, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
         isRunning = true
     }
 
@@ -53,6 +58,7 @@ class RelayService : Service() {
 
     override fun onDestroy() {
         isRunning = false
+        unregisterReceiver(batteryAlertReceiver)
         TelegramBotPoller.stop()
         scope.cancel()
         super.onDestroy()

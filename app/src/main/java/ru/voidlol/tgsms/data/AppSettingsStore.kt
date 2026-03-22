@@ -25,13 +25,21 @@ class AppSettingsStore(context: Context) {
 
     fun load(): AppSettings = AppSettings(
         botToken = prefs.getString(KEY_BOT_TOKEN, "").orEmpty(),
-        chatId = prefs.getString(KEY_CHAT_ID, "").orEmpty()
+        chatId = prefs.getString(KEY_CHAT_ID, "").orEmpty(),
+        batteryAlertThresholdPercent = prefs.getInt(KEY_BATTERY_ALERT_THRESHOLD, DEFAULT_BATTERY_ALERT_THRESHOLD)
     )
 
     fun save(settings: AppSettings) {
         prefs.edit {
             putString(KEY_BOT_TOKEN, settings.botToken.trim())
                 .putString(KEY_CHAT_ID, settings.chatId.trim())
+                .putInt(
+                    KEY_BATTERY_ALERT_THRESHOLD,
+                    settings.batteryAlertThresholdPercent.coerceIn(
+                        MIN_BATTERY_ALERT_THRESHOLD,
+                        MAX_BATTERY_ALERT_THRESHOLD
+                    )
+                )
         }
     }
 
@@ -39,5 +47,9 @@ class AppSettingsStore(context: Context) {
         private const val PREFS_NAME = "telegram_forwarder_settings"
         private const val KEY_BOT_TOKEN = "bot_token"
         private const val KEY_CHAT_ID = "chat_id"
+        private const val KEY_BATTERY_ALERT_THRESHOLD = "battery_alert_threshold"
+        const val DEFAULT_BATTERY_ALERT_THRESHOLD = 30
+        const val MIN_BATTERY_ALERT_THRESHOLD = 10
+        const val MAX_BATTERY_ALERT_THRESHOLD = 60
     }
 }

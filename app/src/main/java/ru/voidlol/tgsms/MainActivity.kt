@@ -46,11 +46,13 @@ import androidx.compose.material.icons.automirrored.outlined.Message
 import androidx.compose.material.icons.automirrored.outlined.Send
 import androidx.compose.material.icons.outlined.PhoneAndroid
 import androidx.compose.material.icons.outlined.PlayArrow
+import androidx.compose.material.icons.outlined.Remove
 import androidx.compose.material.icons.outlined.Security
 import androidx.compose.material.icons.outlined.Sms
 import androidx.compose.material.icons.outlined.Stop
 import androidx.compose.material.icons.outlined.Sync
 import androidx.compose.material.icons.outlined.Tag
+import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.RadioButtonUnchecked
 import androidx.compose.material3.Button
@@ -64,6 +66,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -264,6 +269,9 @@ private fun TelegramForwarderScreen(
     val context = LocalContext.current
     var botToken by rememberSaveable { mutableStateOf(initialSettings.botToken) }
     var chatId by rememberSaveable { mutableStateOf(initialSettings.chatId) }
+    var batteryAlertThreshold by rememberSaveable {
+        mutableStateOf(initialSettings.batteryAlertThresholdPercent.toFloat())
+    }
     var isSending by remember { mutableStateOf(false) }
     var serviceRunning by remember { mutableStateOf(RelayService.isRunning) }
 
@@ -284,7 +292,11 @@ private fun TelegramForwarderScreen(
         contract = ActivityResultContracts.RequestMultiplePermissions()
     ) { }
 
-    val currentSettings = AppSettings(botToken = botToken, chatId = chatId)
+    val currentSettings = AppSettings(
+        botToken = botToken,
+        chatId = chatId,
+        batteryAlertThresholdPercent = batteryAlertThreshold.toInt()
+    )
     val allGranted = permissionStates.values.all { it }
 
     Scaffold(
@@ -381,6 +393,27 @@ private fun TelegramForwarderScreen(
                         focusedBorderColor = MaterialTheme.colorScheme.primary,
                         unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
                     )
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Text(
+                    text = stringResource(
+                        R.string.battery_alert_threshold_label,
+                        batteryAlertThreshold.toInt()
+                    ),
+                    style = MaterialTheme.typography.titleMedium
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = stringResource(R.string.battery_alert_threshold_hint),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                BatteryThresholdControl(
+                    value = batteryAlertThreshold,
+                    onValueChange = { batteryAlertThreshold = it }
                 )
 
                 Spacer(modifier = Modifier.height(8.dp))
@@ -578,7 +611,10 @@ private fun TelegramForwarderScreen(
                 icon = Icons.Outlined.BatteryAlert
             ) {
                 CapabilityRow(label = "SMS forwarding", value = "Incoming messages")
-                CapabilityRow(label = "Battery alerts", value = "Low battery events")
+                CapabilityRow(
+                    label = "Battery alerts",
+                    value = "Starts at ${currentSettings.batteryAlertThresholdPercent}% and repeats every 2% lower"
+                )
                 CapabilityRow(label = "Contact lookup", value = "Sender name resolution")
                 CapabilityRow(label = "Bot commands", value = "/ping /status /log /help")
                 CapabilityRow(label = "Boot auto-start", value = "Survives reboots")
@@ -833,6 +869,173 @@ private fun UpdateCard(
                 text = stringResource(R.string.update_schedule_message),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+@Composable
+private fun BatteryThresholdControl(
+    value: Float,
+    onValueChange: (Float) -> Unit
+) {
+    val threshold = value.toInt()
+    val accentColor = when {
+        threshold <= 20 -> MaterialTheme.colorScheme.error
+        threshold <= 35 -> StatusAmber
+        else -> MaterialTheme.colorScheme.primary
+    }
+    val nextThresholds = listOf(
+        threshold,
+        (threshold - 2).coerceAtLeast(0),
+        (threshold - 4).coerceAtLeast(0)
+    )
+
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(24.dp)),
+        color = MaterialTheme.colorScheme.surface,
+        tonalElevation = 0.dp,
+        shadowElevation = 0.dp
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 18.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = stringResource(R.string.battery_alert_preview_title),
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = stringResource(R.string.battery_alert_threshold_value, threshold),
+                        style = MaterialTheme.typography.headlineMedium,
+                        color = accentColor
+                    )
+                }
+
+                StepperButton(
+                    icon = Icons.Outlined.Remove,
+                    enabled = threshold > 10,
+                    onClick = { onValueChange((threshold - 1).coerceAtLeast(10).toFloat()) }
+                )
+                Spacer(modifier = Modifier.width(10.dp))
+                StepperButton(
+                    icon = Icons.Outlined.Add,
+                    enabled = threshold < 60,
+                    onClick = { onValueChange((threshold + 1).coerceAtMost(60).toFloat()) }
+                )
+            }
+
+            Spacer(modifier = Modifier.height(14.dp))
+
+            Slider(
+                value = value,
+                onValueChange = onValueChange,
+                valueRange = 10f..60f,
+                steps = 49,
+                colors = SliderDefaults.colors(
+                    thumbColor = MaterialTheme.colorScheme.surface,
+                    activeTrackColor = accentColor,
+                    inactiveTrackColor = MaterialTheme.colorScheme.surfaceVariant,
+                    activeTickColor = accentColor,
+                    inactiveTickColor = MaterialTheme.colorScheme.surfaceVariant
+                ),
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = "10%",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                    text = "60%",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            Spacer(modifier = Modifier.height(14.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                nextThresholds.forEach { ThresholdHintChip(text = "$it%") }
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            Text(
+                text = stringResource(
+                    R.string.battery_alert_preview_hint,
+                    nextThresholds[0],
+                    nextThresholds[1],
+                    nextThresholds[2]
+                ),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+@Composable
+private fun ThresholdHintChip(text: String) {
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(999.dp))
+            .background(MaterialTheme.colorScheme.surface)
+            .padding(horizontal = 10.dp, vertical = 6.dp)
+    ) {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.onSurface
+        )
+    }
+}
+
+@Composable
+private fun StepperButton(
+    icon: ImageVector,
+    enabled: Boolean,
+    onClick: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .size(40.dp)
+            .clip(CircleShape)
+            .background(
+                if (enabled) MaterialTheme.colorScheme.surfaceVariant
+                else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+            ),
+        contentAlignment = Alignment.Center
+    ) {
+        Button(
+            onClick = onClick,
+            enabled = enabled,
+            contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = androidx.compose.ui.graphics.Color.Transparent,
+                disabledContainerColor = androidx.compose.ui.graphics.Color.Transparent
+            ),
+            modifier = Modifier.fillMaxSize()
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = if (enabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
     }
