@@ -1,10 +1,13 @@
 package ru.voidlol.tgsms
 
 import android.Manifest
+import android.content.ActivityNotFoundException
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
+import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -56,6 +59,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
@@ -79,6 +83,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
+import java.io.File
 import ru.voidlol.tgsms.ui.theme.StatusGreen
 import ru.voidlol.tgsms.ui.theme.StatusAmber
 import ru.voidlol.tgsms.ui.theme.VoidlolTGSMSTheme
@@ -89,19 +94,52 @@ import ru.voidlol.tgsms.data.AppSettings
 import ru.voidlol.tgsms.data.AppSettingsStore
 import ru.voidlol.tgsms.service.RelayService
 import ru.voidlol.tgsms.telegram.TelegramSender
+import ru.voidlol.tgsms.update.AppUpdateInfo
+import ru.voidlol.tgsms.update.AppUpdateStateStore
+import ru.voidlol.tgsms.update.AppUpdater
+import ru.voidlol.tgsms.update.AppUpdateWorker
 import ru.voidlol.tgsms.util.DeviceInfoFormatter
 import ru.voidlol.tgsms.util.TestMessageFormatter
 
 class MainActivity : ComponentActivity() {
+    private lateinit var appUpdater: AppUpdater
+    private lateinit var appUpdateStateStore: AppUpdateStateStore
+    private lateinit var installPermissionLauncher: ActivityResultLauncher<Intent>
+    private var pendingInstallApk: File? = null
+    private var updateUiState by mutableStateOf(AppUpdateUiState())
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
         val store = AppSettingsStore(applicationContext)
+        appUpdater = AppUpdater(applicationContext)
+        appUpdateStateStore = AppUpdateStateStore(applicationContext)
+        AppUpdateWorker.schedule(applicationContext)
+        val availableUpdate = appUpdateStateStore.loadAvailableUpdate()
+        updateUiState = AppUpdateUiState(
+            installedVersionName = appUpdater.currentVersionName(),
+            availableUpdate = availableUpdate,
+            statusMessage = if (availableUpdate != null) {
+                getString(
+                    R.string.update_available_message,
+                    availableUpdate.versionName
+                )
+            } else {
+                getString(R.string.update_idle_message)
+            }
+        )
+        installPermissionLauncher = registerForActivityResult(
+            ActivityResultContracts.StartActivityForResult()
+        ) {
+            pendingInstallApk?.let(::attemptInstallDownloadedUpdate)
+        }
+
         setContent {
             VoidlolTGSMSTheme {
                 TelegramForwarderScreen(
                     initialSettings = store.load(),
+                    updateState = updateUiState,
                     onSave = { settings ->
                         store.save(settings)
                         toast(getString(R.string.settings_saved))
@@ -118,6 +156,10 @@ class MainActivity : ComponentActivity() {
                             }
                             onFinished(result)
                         }
+                    },
+                    onUpdateAction = {
+                        pendingInstallApk?.let(::attemptInstallDownloadedUpdate)
+                            ?: updateUiState.availableUpdate?.let(::downloadAndInstallUpdate)
                     }
                 )
             }
@@ -127,6 +169,86 @@ class MainActivity : ComponentActivity() {
     private fun toast(message: String) {
         Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
     }
+
+    private fun downloadAndInstallUpdate(updateInfo: AppUpdateInfo) {
+        updateUiState = updateUiState.copy(
+            isDownloading = true,
+            downloadProgress = 0,
+            errorMessage = null,
+            statusMessage = getString(R.string.update_download_starting, updateInfo.versionName)
+        )
+
+        lifecycleScope.launch {
+            val result = withContext(Dispatchers.IO) {
+                runCatching {
+                    appUpdater.downloadUpdate(updateInfo) { progress ->
+                        runOnUiThread {
+                            updateUiState = updateUiState.copy(downloadProgress = progress)
+                        }
+                    }
+                }
+            }
+
+            result
+                .onSuccess { apkFile ->
+                    pendingInstallApk = apkFile
+                    updateUiState = updateUiState.copy(
+                        isDownloading = false,
+                        downloadProgress = 100,
+                        hasDownloadedApk = true,
+                        errorMessage = null,
+                        statusMessage = getString(R.string.update_download_ready, updateInfo.versionName)
+                    )
+                    appUpdateStateStore.saveAvailableUpdate(updateInfo)
+                    attemptInstallDownloadedUpdate(apkFile)
+                }
+                .onFailure { error ->
+                    pendingInstallApk = null
+                    updateUiState = updateUiState.copy(
+                        isDownloading = false,
+                        downloadProgress = null,
+                        hasDownloadedApk = false,
+                        errorMessage = error.message ?: getString(R.string.update_download_failed_generic),
+                        statusMessage = null
+                    )
+                    toast(
+                        getString(
+                            R.string.update_download_failed,
+                            error.message ?: getString(R.string.update_download_failed_generic)
+                        )
+                    )
+                }
+        }
+    }
+
+    private fun attemptInstallDownloadedUpdate(apkFile: File) {
+        pendingInstallApk = apkFile
+
+        if (!appUpdater.canRequestPackageInstalls()) {
+            updateUiState = updateUiState.copy(
+                hasDownloadedApk = true,
+                statusMessage = getString(R.string.update_enable_installs),
+                errorMessage = null
+            )
+            installPermissionLauncher.launch(appUpdater.createUnknownSourcesSettingsIntent())
+            return
+        }
+
+        try {
+            startActivity(appUpdater.createInstallIntent(apkFile))
+            updateUiState = updateUiState.copy(
+                hasDownloadedApk = true,
+                statusMessage = getString(R.string.update_install_prompted),
+                errorMessage = null
+            )
+        } catch (_: ActivityNotFoundException) {
+            updateUiState = updateUiState.copy(
+                hasDownloadedApk = true,
+                statusMessage = null,
+                errorMessage = getString(R.string.update_installer_unavailable)
+            )
+        }
+    }
 }
 
 // ── Main screen ────────────────────────────────────────────
@@ -134,8 +256,10 @@ class MainActivity : ComponentActivity() {
 @Composable
 private fun TelegramForwarderScreen(
     initialSettings: AppSettings,
+    updateState: AppUpdateUiState,
     onSave: (AppSettings) -> Unit,
-    onSendTest: (AppSettings, (Result<Unit>) -> Unit) -> Unit
+    onSendTest: (AppSettings, (Result<Unit>) -> Unit) -> Unit,
+    onUpdateAction: () -> Unit
 ) {
     val context = LocalContext.current
     var botToken by rememberSaveable { mutableStateOf(initialSettings.botToken) }
@@ -203,6 +327,12 @@ private fun TelegramForwarderScreen(
 
             // ── Status card ────────────────────────────
             StatusCard(allGranted = allGranted, isConfigured = currentSettings.isComplete)
+
+            // ── Update card ────────────────────────────
+            UpdateCard(
+                updateState = updateState,
+                onUpdateAction = onUpdateAction
+            )
 
             // ── Telegram config card ───────────────────
             SectionCard(
@@ -586,6 +716,124 @@ private fun SectionCard(
             Spacer(modifier = Modifier.height(16.dp))
 
             content()
+        }
+    }
+}
+
+data class AppUpdateUiState(
+    val installedVersionName: String = "",
+    val availableUpdate: AppUpdateInfo? = null,
+    val isChecking: Boolean = false,
+    val isDownloading: Boolean = false,
+    val downloadProgress: Int? = null,
+    val hasDownloadedApk: Boolean = false,
+    val statusMessage: String? = null,
+    val errorMessage: String? = null
+)
+
+@Composable
+private fun UpdateCard(
+    updateState: AppUpdateUiState,
+    onUpdateAction: () -> Unit
+) {
+    SectionCard(
+        title = stringResource(R.string.update_title),
+        icon = Icons.Outlined.Sync
+    ) {
+        Text(
+            text = stringResource(R.string.update_installed_version, updateState.installedVersionName),
+            style = MaterialTheme.typography.bodyLarge
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        when {
+            updateState.availableUpdate != null -> {
+                Text(
+                    text = stringResource(
+                        R.string.update_available_message,
+                        updateState.availableUpdate.versionName
+                    ),
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = updateState.availableUpdate.changelog.ifBlank {
+                        stringResource(R.string.update_default_changelog)
+                    },
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            updateState.errorMessage != null -> {
+                Text(
+                    text = updateState.errorMessage,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.error
+                )
+            }
+
+            else -> {
+                Text(
+                    text = updateState.statusMessage ?: stringResource(R.string.update_idle_message),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+
+        if (updateState.isDownloading) {
+            Spacer(modifier = Modifier.height(12.dp))
+            LinearProgressIndicator(
+                progress = { ((updateState.downloadProgress ?: 0) / 100f).coerceIn(0f, 1f) },
+                modifier = Modifier.fillMaxWidth()
+            )
+            Spacer(modifier = Modifier.height(6.dp))
+            Text(
+                text = stringResource(
+                    R.string.update_download_progress,
+                    updateState.downloadProgress ?: 0
+                ),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        } else if (!updateState.statusMessage.isNullOrBlank() && updateState.availableUpdate != null) {
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = updateState.statusMessage,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+
+        if (updateState.availableUpdate != null) {
+            Spacer(modifier = Modifier.height(12.dp))
+            Button(
+                onClick = onUpdateAction,
+                enabled = !updateState.isDownloading,
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(14.dp)
+            ) {
+                Text(
+                    text = when {
+                        updateState.isDownloading -> stringResource(R.string.update_downloading)
+                        updateState.hasDownloadedApk -> stringResource(R.string.update_install_button)
+                        else -> stringResource(R.string.update_download_button)
+                    },
+                    modifier = Modifier.padding(vertical = 4.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+        } else {
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = stringResource(R.string.update_schedule_message),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
 }

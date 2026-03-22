@@ -27,4 +27,26 @@
     <string name="relay_running">Service is active — bot commands enabled</string>
     <string name="relay_stopped">Service is stopped</string>
     <string name="relay_needs_setup">Complete setup first</string>
+    <string name="update_title">App updates</string>
+    <string name="update_installed_version">Installed version: %1$s</string>
+    <string name="update_idle_message">Check GitHub for a newer APK release.</string>
+    <string name="update_schedule_message">The app checks for new versions automatically once per day.</string>
+    <string name="update_available_message">Update available: %1$s</string>
+    <string name="update_default_changelog">A newer APK is ready to install.</string>
+    <string name="update_up_to_date">You already have the latest version.</string>
+    <string name="update_download_button">Download update</string>
+    <string name="update_install_button">Install update</string>
+    <string name="update_downloading">Downloading…</string>
+    <string name="update_download_progress">Download progress: %1$d%%</string>
+    <string name="update_download_starting">Downloading version %1$s…</string>
+    <string name="update_download_ready">Version %1$s is ready to install.</string>
+    <string name="update_download_failed">Update download failed: %1$s</string>
+    <string name="update_download_failed_generic">Could not download the APK</string>
+    <string name="update_enable_installs">Allow installs from this app to continue the update.</string>
+    <string name="update_install_prompted">Android installer opened. Confirm the update to finish installation.</string>
+    <string name="update_installer_unavailable">No package installer is available on this device.</string>
+    <string name="update_channel_name">App updates</string>
+    <string name="update_channel_description">Notifies when a newer APK release is available.</string>
+    <string name="update_notification_title">Update available: %1$s</string>
+    <string name="update_notification_text">Open the app to download and install the latest version.</string>
 </resources>

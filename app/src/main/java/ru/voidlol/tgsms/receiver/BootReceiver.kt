@@ -3,6 +3,7 @@ package ru.voidlol.tgsms.receiver
 import ru.voidlol.tgsms.data.AppSettingsStore
 import ru.voidlol.tgsms.data.MessageQueue
 import ru.voidlol.tgsms.service.RelayService
+import ru.voidlol.tgsms.update.AppUpdateWorker
 
 import android.content.BroadcastReceiver
 import android.content.Context
@@ -17,6 +18,8 @@ class BootReceiver : BroadcastReceiver() {
         }
 
         val appContext = context.applicationContext
+        AppUpdateWorker.schedule(appContext)
+
         val settings = AppSettingsStore(appContext).load()
         if (!settings.isComplete) {
             return
