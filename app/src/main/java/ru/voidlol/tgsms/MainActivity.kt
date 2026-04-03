@@ -4,7 +4,11 @@ import android.Manifest
 import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
+import android.os.Build
 import android.os.Bundle
+import android.os.PowerManager
+import android.provider.Settings
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.result.ActivityResultLauncher
@@ -71,6 +75,7 @@ import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -97,6 +102,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import ru.voidlol.tgsms.data.AppSettings
 import ru.voidlol.tgsms.data.AppSettingsStore
+import ru.voidlol.tgsms.service.RelayMonitorWorker
 import ru.voidlol.tgsms.service.RelayService
 import ru.voidlol.tgsms.telegram.TelegramSender
 import ru.voidlol.tgsms.update.AppUpdateInfo
@@ -121,6 +127,8 @@ class MainActivity : ComponentActivity() {
         appUpdater = AppUpdater(applicationContext)
         appUpdateStateStore = AppUpdateStateStore(applicationContext)
         AppUpdateWorker.schedule(applicationContext)
+        RelayMonitorWorker.schedule(applicationContext)
+        RelayService.ensureRunning(applicationContext)
         val availableUpdate = appUpdateStateStore.loadAvailableUpdate()
         updateUiState = AppUpdateUiState(
             installedVersionName = appUpdater.currentVersionName(),
@@ -295,7 +303,7 @@ private fun TelegramForwarderScreen(
         mutableStateOf(initialSettings.batteryAlertThresholdPercent.toFloat())
     }
     var isSending by remember { mutableStateOf(false) }
-    var serviceRunning by remember { mutableStateOf(RelayService.isRunning) }
+    var serviceRunning by remember { mutableStateOf(RelayService.shouldRun(context) && RelayService.isRunning) }
 
     val permissions = remember {
         listOf(
@@ -320,6 +328,17 @@ private fun TelegramForwarderScreen(
         batteryAlertThresholdPercent = batteryAlertThreshold.toInt()
     )
     val allGranted = permissionStates.values.all { it }
+    val notificationsGranted = areNotificationsEnabled(context)
+    val batteryOptimizationIgnored = isIgnoringBatteryOptimizations(context)
+    val manufacturer = Build.MANUFACTURER.orEmpty()
+    val isHonorFamilyDevice =
+        manufacturer.equals("HONOR", ignoreCase = true) ||
+            manufacturer.equals("HUAWEI", ignoreCase = true)
+
+    LaunchedEffect(Unit) {
+        RelayService.ensureRunning(context)
+        serviceRunning = RelayService.shouldRun(context) && RelayService.isRunning
+    }
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
@@ -573,6 +592,53 @@ private fun TelegramForwarderScreen(
 
                 Spacer(modifier = Modifier.height(8.dp))
 
+                if (!notificationsGranted || !batteryOptimizationIgnored || isHonorFamilyDevice) {
+                    Text(
+                        text = stringResource(R.string.relay_background_hint),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    if (!notificationsGranted) {
+                        FilledTonalButton(
+                            onClick = { openAppNotificationSettings(context) },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(14.dp)
+                        ) {
+                            Text(
+                                text = stringResource(R.string.relay_open_notification_settings),
+                                modifier = Modifier.padding(vertical = 4.dp)
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(8.dp))
+                    }
+
+                    if (!batteryOptimizationIgnored) {
+                        FilledTonalButton(
+                            onClick = { openBatteryOptimizationSettings(context) },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(14.dp)
+                        ) {
+                            Text(
+                                text = stringResource(R.string.relay_open_battery_settings),
+                                modifier = Modifier.padding(vertical = 4.dp)
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(8.dp))
+                    }
+
+                    if (isHonorFamilyDevice) {
+                        Text(
+                            text = stringResource(R.string.relay_honor_hint),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                    }
+                }
+
                 if (serviceRunning) {
                     FilledTonalButton(
                         onClick = {
@@ -645,6 +711,45 @@ private fun TelegramForwarderScreen(
             Spacer(modifier = Modifier.height(16.dp))
         }
     }
+}
+
+private fun areNotificationsEnabled(context: android.content.Context): Boolean {
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+        return true
+    }
+
+    return ContextCompat.checkSelfPermission(
+        context,
+        Manifest.permission.POST_NOTIFICATIONS
+    ) == PackageManager.PERMISSION_GRANTED
+}
+
+private fun isIgnoringBatteryOptimizations(context: android.content.Context): Boolean {
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
+        return true
+    }
+
+    val powerManager = context.getSystemService(PowerManager::class.java) ?: return false
+    return powerManager.isIgnoringBatteryOptimizations(context.packageName)
+}
+
+private fun openBatteryOptimizationSettings(context: android.content.Context) {
+    val packageUri = Uri.parse("package:${context.packageName}")
+    val requestIntent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, packageUri)
+        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+    val fallbackIntent = Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
+        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+
+    runCatching { context.startActivity(requestIntent) }
+        .recoverCatching { context.startActivity(fallbackIntent) }
+}
+
+private fun openAppNotificationSettings(context: android.content.Context) {
+    val intent = Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
+        putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
+        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+    }
+    context.startActivity(intent)
 }
 
 // ── Status card ────────────────────────────────────────────

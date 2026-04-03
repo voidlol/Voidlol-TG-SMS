@@ -2,6 +2,7 @@ package ru.voidlol.tgsms.receiver
 
 import ru.voidlol.tgsms.data.AppSettingsStore
 import ru.voidlol.tgsms.data.MessageQueue
+import ru.voidlol.tgsms.service.RelayMonitorWorker
 import ru.voidlol.tgsms.service.RelayService
 import ru.voidlol.tgsms.update.AppUpdateWorker
 
@@ -26,6 +27,7 @@ class BootReceiver : BroadcastReceiver() {
         }
 
         MessageQueue.scheduleWorker(appContext)
+        RelayMonitorWorker.schedule(appContext)
         RelayService.start(appContext)
     }
 }

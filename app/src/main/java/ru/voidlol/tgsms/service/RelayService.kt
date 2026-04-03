@@ -2,6 +2,7 @@ package ru.voidlol.tgsms.service
 
 import ru.voidlol.tgsms.MainActivity
 import ru.voidlol.tgsms.R
+import ru.voidlol.tgsms.data.AppSettingsStore
 import ru.voidlol.tgsms.data.MessageQueue
 import ru.voidlol.tgsms.telegram.TelegramBotPoller
 
@@ -31,6 +32,7 @@ class RelayService : Service() {
 
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private val batteryAlertReceiver: BroadcastReceiver = BatteryAlertReceiver()
+    private val stateStore by lazy { RelayServiceStateStore(applicationContext) }
 
     override fun onCreate() {
         super.onCreate()
@@ -48,19 +50,34 @@ class RelayService : Service() {
         }
         registerReceiver(batteryAlertReceiver, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
         isRunning = true
+        stateStore.setShouldRun(true)
+        RelayMonitorWorker.schedule(applicationContext)
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        stateStore.setShouldRun(true)
+        RelayMonitorWorker.schedule(applicationContext)
         MessageQueue.scheduleWorker(applicationContext)
         scope.launch { TelegramBotPoller.startPolling(applicationContext) }
         return START_STICKY
     }
 
+    override fun onTaskRemoved(rootIntent: Intent?) {
+        if (stateStore.shouldRun()) {
+            RelayMonitorWorker.scheduleImmediate(applicationContext)
+        }
+        super.onTaskRemoved(rootIntent)
+    }
+
     override fun onDestroy() {
         isRunning = false
-        unregisterReceiver(batteryAlertReceiver)
+        startedAtElapsed = 0L
+        runCatching { unregisterReceiver(batteryAlertReceiver) }
         TelegramBotPoller.stop()
         scope.cancel()
+        if (stateStore.shouldRun()) {
+            RelayMonitorWorker.scheduleImmediate(applicationContext)
+        }
         super.onDestroy()
     }
 
@@ -110,12 +127,36 @@ class RelayService : Service() {
             private set
 
         fun start(context: Context) {
-            val intent = Intent(context, RelayService::class.java)
-            ContextCompat.startForegroundService(context, intent)
+            val appContext = context.applicationContext
+            RelayServiceStateStore(appContext).setShouldRun(true)
+            RelayMonitorWorker.schedule(appContext)
+            val intent = Intent(appContext, RelayService::class.java)
+            ContextCompat.startForegroundService(appContext, intent)
         }
 
         fun stop(context: Context) {
-            context.stopService(Intent(context, RelayService::class.java))
+            val appContext = context.applicationContext
+            RelayServiceStateStore(appContext).setShouldRun(false)
+            RelayMonitorWorker.cancel(appContext)
+            TelegramBotPoller.stop()
+            appContext.stopService(Intent(appContext, RelayService::class.java))
+        }
+
+        fun shouldRun(context: Context): Boolean {
+            return RelayServiceStateStore(context.applicationContext).shouldRun()
+        }
+
+        fun ensureRunning(context: Context) {
+            val appContext = context.applicationContext
+            val settings = AppSettingsStore(appContext).load()
+            if (!shouldRun(appContext) || !settings.isComplete) {
+                return
+            }
+
+            RelayMonitorWorker.schedule(appContext)
+            if (!isRunning) {
+                start(appContext)
+            }
         }
     }
 }
