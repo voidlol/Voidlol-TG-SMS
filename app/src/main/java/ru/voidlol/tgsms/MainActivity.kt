@@ -92,6 +92,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import androidx.core.content.IntentCompat
 import androidx.lifecycle.lifecycleScope
 import java.io.File
 import ru.voidlol.tgsms.ui.theme.StatusGreen
@@ -158,10 +159,12 @@ class MainActivity : ComponentActivity() {
                         toast(getString(R.string.settings_saved))
                     },
                     onSendTest = { settings, onFinished ->
+                        // Save and read back so the test uses exactly what background forwarding uses.
+                        store.save(settings)
                         lifecycleScope.launch {
                             val result = withContext(Dispatchers.IO) {
                                 TelegramSender.sendMessage(
-                                    settings = settings,
+                                    settings = store.load(),
                                     message = TestMessageFormatter.format(
                                         DeviceInfoFormatter.appName(this@MainActivity)
                                     )
@@ -330,6 +333,7 @@ private fun TelegramForwarderScreen(
     val allGranted = permissionStates.values.all { it }
     val notificationsGranted = areNotificationsEnabled(context)
     val batteryOptimizationIgnored = isIgnoringBatteryOptimizations(context)
+    val unusedAppRestrictionsDisabled = isExemptFromUnusedAppRestrictions(context)
     val manufacturer = Build.MANUFACTURER.orEmpty()
     val isHonorFamilyDevice =
         manufacturer.equals("HONOR", ignoreCase = true) ||
@@ -592,7 +596,9 @@ private fun TelegramForwarderScreen(
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                if (!notificationsGranted || !batteryOptimizationIgnored || isHonorFamilyDevice) {
+                if (!notificationsGranted || !batteryOptimizationIgnored || isHonorFamilyDevice ||
+                    !unusedAppRestrictionsDisabled
+                ) {
                     Text(
                         text = stringResource(R.string.relay_background_hint),
                         style = MaterialTheme.typography.bodySmall,
@@ -623,6 +629,26 @@ private fun TelegramForwarderScreen(
                         ) {
                             Text(
                                 text = stringResource(R.string.relay_open_battery_settings),
+                                modifier = Modifier.padding(vertical = 4.dp)
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(8.dp))
+                    }
+
+                    if (!unusedAppRestrictionsDisabled) {
+                        Text(
+                            text = stringResource(R.string.relay_unused_app_hint),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        FilledTonalButton(
+                            onClick = { openUnusedAppRestrictionsSettings(context) },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(14.dp)
+                        ) {
+                            Text(
+                                text = stringResource(R.string.relay_open_unused_app_settings),
                                 modifier = Modifier.padding(vertical = 4.dp)
                             )
                         }
@@ -731,6 +757,24 @@ private fun isIgnoringBatteryOptimizations(context: android.content.Context): Bo
 
     val powerManager = context.getSystemService(PowerManager::class.java) ?: return false
     return powerManager.isIgnoringBatteryOptimizations(context.packageName)
+}
+
+private fun isExemptFromUnusedAppRestrictions(context: android.content.Context): Boolean {
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
+        return true
+    }
+    return context.packageManager.isAutoRevokeWhitelisted
+}
+
+private fun openUnusedAppRestrictionsSettings(context: android.content.Context) {
+    val intent = IntentCompat.createManageUnusedAppRestrictionsIntent(context, context.packageName)
+        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+    val fallbackIntent = Intent(
+        Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+        Uri.parse("package:${context.packageName}")
+    ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+    runCatching { context.startActivity(intent) }
+        .onFailure { runCatching { context.startActivity(fallbackIntent) } }
 }
 
 private fun openBatteryOptimizationSettings(context: android.content.Context) {

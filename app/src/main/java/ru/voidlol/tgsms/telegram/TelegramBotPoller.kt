@@ -4,6 +4,9 @@ import ru.voidlol.tgsms.data.AppSettingsStore
 
 import android.content.Context
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.delay
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.OkHttpClient
@@ -18,22 +21,17 @@ object TelegramBotPoller {
     private const val PREFS_NAME = "bot_poller"
     private const val KEY_OFFSET = "offset"
 
-    @Volatile
-    private var running = false
-
     private val client = OkHttpClient.Builder()
         .connectTimeout(15, TimeUnit.SECONDS)
         .readTimeout((POLL_TIMEOUT + 15).toLong(), TimeUnit.SECONDS)
         .build()
 
+    /** Runs until the calling coroutine is cancelled; the caller must ensure a single instance. */
     suspend fun startPolling(context: Context) {
-        if (running) return
-        running = true
-
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         var offset = prefs.getLong(KEY_OFFSET, 0)
 
-        while (running) {
+        while (currentCoroutineContext().isActive) {
             try {
                 val settings = AppSettingsStore(context).load()
                 if (!settings.isComplete) {
@@ -47,6 +45,8 @@ object TelegramBotPoller {
                 }
 
                 val updates = getUpdates(settings.botToken, offset, POLL_TIMEOUT)
+                // The blocking HTTP call ignores cancellation; don't handle updates after a stop.
+                currentCoroutineContext().ensureActive()
                 for (update in updates) {
                     if (matchesChatId(update.chatId, settings.chatId)) {
                         val response = BotCommandHandler.handle(context, update.text)
@@ -63,10 +63,6 @@ object TelegramBotPoller {
                 delay(30_000)
             }
         }
-    }
-
-    fun stop() {
-        running = false
     }
 
     private fun skipOldUpdates(botToken: String): Long {
