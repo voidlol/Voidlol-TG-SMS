@@ -31,6 +31,6 @@ object MessageQueue {
             .build()
 
         WorkManager.getInstance(context)
-            .enqueueUniqueWork(WORK_NAME, ExistingWorkPolicy.REPLACE, request)
+            .enqueueUniqueWork(WORK_NAME, ExistingWorkPolicy.APPEND_OR_REPLACE, request)
     }
 }

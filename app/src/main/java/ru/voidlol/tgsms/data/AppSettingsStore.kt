@@ -2,6 +2,7 @@ package ru.voidlol.tgsms.data
 
 import android.content.Context
 import android.content.SharedPreferences
+import android.util.Log
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
 import androidx.core.content.edit
@@ -19,7 +20,8 @@ class AppSettingsStore(context: Context) {
             EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
             EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
         )
-    } catch (_: Exception) {
+    } catch (e: Exception) {
+        Log.e(TAG, "Encrypted settings unavailable, falling back to plain prefs", e)
         context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
     }
 
@@ -44,6 +46,7 @@ class AppSettingsStore(context: Context) {
     }
 
     companion object {
+        private const val TAG = "AppSettingsStore"
         private const val PREFS_NAME = "telegram_forwarder_settings"
         private const val KEY_BOT_TOKEN = "bot_token"
         private const val KEY_CHAT_ID = "chat_id"

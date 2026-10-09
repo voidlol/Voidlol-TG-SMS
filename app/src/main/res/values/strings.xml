@@ -34,6 +34,8 @@
     <string name="relay_needs_setup">Complete setup first</string>
     <string name="relay_background_hint">If the relay disappears after idle time, allow notifications, disable battery optimization for this app, and keep auto-launch/background activity enabled in the phone settings.</string>
     <string name="relay_open_notification_settings">Open notification settings</string>
+    <string name="relay_unused_app_hint">Android removes permissions from apps that are not opened for a few months, which silently stops SMS forwarding. Turn off \"Pause app activity if unused\" for this app.</string>
+    <string name="relay_open_unused_app_settings">Open unused app settings</string>
     <string name="relay_open_battery_settings">Open battery settings</string>
     <string name="relay_honor_hint">Honor/Huawei devices often stop background services aggressively. In system settings, allow this app to auto-launch, run in background, and stay active when the screen is off.</string>
     <string name="update_title">App updates</string>
